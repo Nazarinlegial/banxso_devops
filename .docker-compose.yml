@@ -1,0 +1,66 @@
+version: '3'
+services:
+  app-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - '127.0.0.1:5000:5000'
+    volumes:
+      - ./backend:/usr/src/app
+    networks:
+      - app-network
+  #    command: npm run dev
+
+  app-frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - ./frontend:/usr/src/app
+    depends_on:
+      - app-backend
+    networks:
+      - app-network
+  #    command: npm run dev
+
+  app-nginx:
+    image: nginx:latest
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /root/nginx-conf:/etc/nginx/nginx.conf
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - web-root:/var/www/html
+    depends_on:
+      - app-backend
+    networks:
+      - app-network
+
+  app-certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - web-root:/var/www/html
+    depends_on:
+      - app-nginx
+#    command: certonly --webroot --non-interactive --webroot-path=/var/www/html --email nazar.kovalchuk17@gmail.com --agree-tos --no-eff-email --force-renewal -d bannkai.com
+    command: certonly --webroot --webroot-path=/var/www/html --email nazar.kovalchuk17@gmail.com --agree-tos --no-eff-email --staging -d bannkai.com
+
+volumes:
+  certbot-etc:
+  certbot-var:
+  web-root:
+      driver: local
+      driver_opts:
+          type: none
+          device: /root/views/
+          o: bind
+networks:
+  app-network:
+    driver: bridge
